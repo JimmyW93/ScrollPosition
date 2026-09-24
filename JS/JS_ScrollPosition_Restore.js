@@ -9,11 +9,21 @@ import "mx-global";
 import { Big } from "big.js";
 
 // BEGIN EXTRA CODE
+// Returns the element that actually scrolls: the match itself, or one of its children/grandchildren.
+// Since DataWidgets 3.11 a Data Grid 2 with virtual scrolling scrolls .widget-datagrid-grid.infinite-loading,
+// which sits INSIDE .widget-datagrid-content, so checking the matched element alone finds nothing.
+function findScrollContainer(root) {
+	const candidates = [root, ...root.querySelectorAll(":scope > *, :scope > * > *")];
+	return candidates.find(el => {
+		const overflowY = window.getComputedStyle(el).overflowY;
+		return (overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+	});
+}
 // END EXTRA CODE
 
 /**
  * Behavior:
- * Reads scrollPos_<key> from localStorage. If absent, returns immediately. Otherwise polls every 100ms (up to 30 attempts, 3 seconds total) for a scrollable querySelector (e.g. .mx-dataview-content or .widget-datagrid-content).
+ * Reads scrollPos_<key> from localStorage. If absent, returns immediately. Otherwise polls every 100ms (up to 30 attempts, 3 seconds total) for a scrollable .mx-dataview-content.
  * On first match, sets its scrollTop to the saved value, removes the key from localStorage (one-shot consumption), and stops polling.
  * If no scrollable container appears within 3 seconds, the attempt is abandoned silently.
  * 
@@ -29,23 +39,30 @@ export async function JS_ScrollPosition_Restore(key, querySelector) {
 	const saved = localStorage.getItem("scrollPos_" + key);
 	if (!saved) return;
 
+	const target = parseFloat(saved);
+	const maxAttempts = 60;
+
 	let attempts = 0;
 	const interval = setInterval(() => {
+		attempts++;
 		const containers = document.querySelectorAll(querySelector);
 		for (const c of containers) {
-			const style = window.getComputedStyle(c);
-			const canScroll = (style.overflowY === 'auto' || style.overflowY === 'scroll')
-				&& c.scrollHeight > c.clientHeight;
-			if (canScroll) {
-				c.scrollTop = parseFloat(saved);
-				// Clear the saved viewport position so it can't accidentally be re-used
-				localStorage.removeItem("scrollPos_" + key);
-				clearInterval(interval);
+			const scroller = findScrollContainer(c);
+			if (!scroller) continue;
+			// A virtual-scrolling grid only renders its first page of rows. If the saved position
+			// is not reachable yet, scroll to the bottom to make the grid fetch more rows, and retry.
+			const reachable = scroller.scrollHeight - scroller.clientHeight >= target - 2;
+			if (!reachable && attempts < maxAttempts) {
+				scroller.scrollTop = scroller.scrollHeight;
 				return;
 			}
+			scroller.scrollTop = target;
+			// Clear the saved viewport position so it can't accidentally be re-used
+			localStorage.removeItem("scrollPos_" + key);
+			clearInterval(interval);
+			return;
 		}
-		attempts++;
-		if (attempts >= 30) clearInterval(interval);
+		if (attempts >= maxAttempts) clearInterval(interval);
 	}, 100);
 	// END USER CODE
 }

@@ -9,11 +9,21 @@ import "mx-global";
 import { Big } from "big.js";
 
 // BEGIN EXTRA CODE
+// Returns the element that actually scrolls: the match itself, or one of its children/grandchildren.
+// Since DataWidgets 3.11 a Data Grid 2 with virtual scrolling scrolls .widget-datagrid-grid.infinite-loading,
+// which sits INSIDE .widget-datagrid-content, so checking the matched element alone finds nothing.
+function findScrollContainer(root) {
+	const candidates = [root, ...root.querySelectorAll(":scope > *, :scope > * > *")];
+	return candidates.find(el => {
+		const overflowY = window.getComputedStyle(el).overflowY;
+		return (overflowY === "auto" || overflowY === "scroll") && el.scrollHeight > el.clientHeight;
+	});
+}
 // END EXTRA CODE
 
 /**
  * Behavior
- * Locates the first element matching querySelector (e.g. .mx-dataview-content or .widget-datagrid-content) whose computed overflow-y is auto or scroll and whose content actually overflows (scrollHeight > clientHeight).
+ * Locates the first element matching .mx-dataview-content whose computed overflow-y is auto or scroll and whose content actually overflows (scrollHeight > clientHeight).
  * Writes that element's scrollTop to localStorage under scrollPos_<key>. If no scrollable container is found, nothing is written.
  * 
  * When to call:
@@ -27,11 +37,9 @@ export async function JS_ScrollPosition_Save(key, querySelector) {
 	// BEGIN USER CODE
 	const containers = document.querySelectorAll(querySelector);
 	for (const c of containers) {
-		const style = window.getComputedStyle(c);
-		const canScroll = (style.overflowY === 'auto' || style.overflowY === 'scroll')
-			&& c.scrollHeight > c.clientHeight;
-		if (canScroll) {
-			localStorage.setItem("scrollPos_" + key, c.scrollTop);
+		const scroller = findScrollContainer(c);
+		if (scroller) {
+			localStorage.setItem("scrollPos_" + key, scroller.scrollTop);
 			break;
 		}
 	}

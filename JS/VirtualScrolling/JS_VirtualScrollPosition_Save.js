@@ -13,12 +13,12 @@ import { Big } from "big.js";
 
 /**
  * Behavior
- * Finds the element matching querySelector (e.g. .widget-datagrid-content or .widget-datagrid-grid-body) and walks up the DOM tree to find the first scrollable ancestor (overflow-y: auto or scroll, scrollHeight > clientHeight).
- * Writes that ancestor's scrollTop to localStorage under scrollPos_<key>. If no scrollable ancestor is found, nothing is written.
- *
+ * Locates the first element matching querySelector (e.g. .mx-dataview-content or .widget-datagrid-content) whose computed overflow-y is auto or scroll and whose content actually overflows (scrollHeight > clientHeight).
+ * Writes that element's scrollTop to localStorage under scrollPos_<key>. If no scrollable container is found, nothing is written.
+ * 
  * When to call:
  * From a nanoflow, immediately before the "Show page" activity that navigates away from the current page.
- * Typical pattern: a row-level "open detail" button runs a nanoflow that first calls JS_VirtualScrollPosition_Save, then opens the detail page.
+ * Typical pattern: a row-level "open detail" button runs a nanoflow that first calls JS_VirtualScrollPosition, then opens the detail page.
  * @param {string} key - An identifier for the page or context being saved. Different pages should use different keys to avoid collisions.
  * @param {string} querySelector - E.g. .widget-datagrid-content or .widget-datagrid-grid-body
  * @returns {Promise.<void>}
