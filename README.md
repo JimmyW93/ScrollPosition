@@ -72,10 +72,11 @@ Note that the Events widget might require a delay of 100 milliseconds or more de
 **How it works (Standard):**
 
 - Reads `scrollPos_<key>` from `localStorage`
-- Polls every 100ms (up to 30 attempts / 3 seconds) for the scrollable element to appear in DOM
-- On first match, sets `scrollTop` to the saved value
+- Polls every 100ms (up to **60 attempts / 6 seconds**) for the scrollable element (the `querySelector` match or one of its children/grandchildren) to appear in DOM
+- If the saved position isn't reachable yet (e.g. a Data Grid 2 with virtual scrolling has only rendered its first rows), scrolls to the bottom to load more rows and retries
+- Once reachable, sets `scrollTop` to the saved value
 - Removes the saved value from `localStorage` (one-shot consumption)
-- If no scrollable container appears within 3 seconds, silently abandons
+- If no scrollable container appears within 6 seconds, silently abandons
 
 **How it works (Virtual Scrolling):**
 
@@ -89,14 +90,15 @@ Note that the Events widget might require a delay of 100 milliseconds or more de
 
 ### Standard Actions (JS_ScrollPosition_Save / JS_ScrollPosition_Restore)
 
-For regular scrollable containers where all content is rendered upfront.
+For regular scrollable containers, including Data Grid 2 with virtual scrolling (DataWidgets 3.11+).
 
 **JS_ScrollPosition_Save:**
 
-- Finds elements matching `querySelector` with:
+- For each element matching `querySelector`, checks the element itself and its children/grandchildren for one with:
   - `overflow-y: auto` or `overflow-y: scroll`
   - `scrollHeight > clientHeight` (actually overflows)
-- Writes `scrollTop` to `localStorage` as `scrollPos_<key>`
+- Since DataWidgets 3.11, a Data Grid 2 with virtual scrolling scrolls `.widget-datagrid-grid.infinite-loading`, which sits inside `.widget-datagrid-content`, so the children are checked too
+- Writes the first match's `scrollTop` to `localStorage` as `scrollPos_<key>`
 - If no scrollable container is found, nothing is written
 
 **JS_ScrollPosition_Restore:**
@@ -104,7 +106,9 @@ For regular scrollable containers where all content is rendered upfront.
 - Reads `scrollPos_<key>` from `localStorage`
 - If not found, returns immediately (no-op)
 - Uses polling because the DOM may not be fully rendered when the nanoflow runs
-- Stops polling on first match or after 30 attempts (3 seconds)
+- Finds the scrollable element the same way as Save
+- If the saved position is beyond the currently loaded rows, scrolls to the bottom to trigger loading more, then continues polling
+- Sets `scrollTop` once the position is reachable, or on the last attempt (60 attempts / 6 seconds) with whatever has loaded
 - Clears the saved position after restoring (prevents accidental reuse)
 
 ### Virtual Scrolling Actions (JS_VirtualScrollPosition_Save / JS_VirtualScrollPosition_Restore)

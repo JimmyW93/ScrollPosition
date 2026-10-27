@@ -23,8 +23,8 @@ function findScrollContainer(root) {
 
 /**
  * Behavior
- * Locates the first element matching .mx-dataview-content whose computed overflow-y is auto or scroll and whose content actually overflows (scrollHeight > clientHeight).
- * Writes that element's scrollTop to localStorage under scrollPos_<key>. If no scrollable container is found, nothing is written.
+ * For each element matching the querySelector, looks at the element itself and its children/grandchildren for one whose computed overflow-y is auto or scroll and whose content actually overflows (scrollHeight > clientHeight).
+ * Writes the first such element's scrollTop to localStorage under scrollPos_<key>. If no scrollable container is found, nothing is written.
  * 
  * When to call:
  * From a nanoflow, immediately before the "Show page" activity that navigates away from the current page.

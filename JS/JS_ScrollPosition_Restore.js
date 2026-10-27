@@ -23,9 +23,10 @@ function findScrollContainer(root) {
 
 /**
  * Behavior:
- * Reads scrollPos_<key> from localStorage. If absent, returns immediately. Otherwise polls every 100ms (up to 30 attempts, 3 seconds total) for a scrollable .mx-dataview-content.
- * On first match, sets its scrollTop to the saved value, removes the key from localStorage (one-shot consumption), and stops polling.
- * If no scrollable container appears within 3 seconds, the attempt is abandoned silently.
+ * Reads scrollPos_<key> from localStorage. If absent, returns immediately. Otherwise polls every 100ms (up to 60 attempts, 6 seconds total) for a scrollable element: the querySelector match itself or one of its children/grandchildren.
+ * If the saved position isn't reachable yet (e.g. a Data Grid 2 with virtual scrolling has only rendered its first rows), scrolls to the bottom to trigger loading more rows and retries.
+ * Once reachable, sets scrollTop to the saved value, removes the key from localStorage (one-shot consumption), and stops polling. On the last attempt it sets scrollTop to the saved value even if it isn't fully reachable.
+ * If no scrollable container appears within 6 seconds, the attempt is abandoned silently.
  * 
  * When to call:
  * From the nanoflow that shows the page being restored, after the "Show page" activity.
